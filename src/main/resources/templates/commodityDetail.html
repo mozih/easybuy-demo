@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <title>商品详情</title>
+
+</head>
+<link rel="stylesheet" href="css/index.css">
+<link rel="shortcut icon" href="images/logo.ico" type="image/x-icon">
+<base th:href="@{/}" href="/"/>
+<body>
+<div id="app">
+    <div class="top">
+        <li><a class="active" onclick="location='toUser'">个人主页</a></li>
+        <li><a class="active" onclick="location='toHistory'">浏览历史</a></li>
+        <li th:if="${session.user != null}">
+            欢迎您，<span th:text="${session.user.userName}"></span>
+            <a id="logout"  @click="logout()">退出登录</a>
+        </li>
+        <li th:if="${session.user == null}"><a onclick="location='login'">请登录</a> </li>
+        <div><img style="width: 45px;height: 45px;padding-left: 5px" src="images/logo.jpg" onclick="location='index'"></div>
+    </div>
+
+    <el-card class="commodity">
+        <div class="comPic"><el-image th:src="${commodity.comPicUrl}" style="height: 100%;width: 100%"></el-image></div>
+        <div class="comName">
+            <img src="images/jd.png" th:if="${commodity.comAddress == '京东商城（自营）'}">
+            <img src="images/amazon.png" th:if="${commodity.comAddress == '亚马逊'}">
+            <img src="images/suning.png" th:if="${commodity.comAddress == '苏宁易购'}">
+            <img src="images/dangdang.png" th:if="${commodity.comAddress == '当当网'}">
+            <span th:text="${commodity.comDetail}"></span>
+        </div>
+        <div class="comPrice">
+            <span>价格：</span>
+            <span style="color: red">￥</span><span th:text="${prices.get(prices.size()-1).priceNow}"
+                                                   style="font-size: larger;color: red"></span>
+        </div>
+        <div class="comUrl">
+            <a type="button" th:href="${commodity.comUrl}">立即购买</a>
+        </div>
+    </el-card>
+
+    <div class="prices" id="prices" style="width: 500px;height:300px;margin-left: 900px;margin-top: -320px"></div>
+    <br><br>
+    <!-- 提示信息 -->
+    <transition>
+        <p v-if="isInfo" class="info" v-cloak>{{ infoText }}</p>
+    </transition>
+    <div class="mark">
+        <h2>商品评价：</h2><br>
+        <span>评分：</span>
+        <div class="markScore">
+            <el-rate v-model="markScore" show-text></el-rate>
+        </div>
+        <div class="markContent">
+            <form id="markContent">
+                <el-input
+                        style="width: 400px;"
+                        type="textarea"
+                        autosize
+                        placeholder="请输入内容(100字以内)"
+                        name="markContent"
+                        v-model="markContent">
+                </el-input>
+                <el-button type="primary" icon="el-icon-position" style="height: 33px;"
+                           @click="submitContent">提交
+                </el-button>
+            </form>
+        </div>
+        <div class="otherMark">
+            <el-card class="box-card" style="width: 100%;">
+                <el-empty description="暂时无人评论" v-if="noContents"></el-empty>
+                <template>
+                    <div class="infinite-list-wrapper">
+                        <ul class="list" v-infinite-scroll="load" infinite-scroll-disabled="disabled" style="overflow:auto">
+                            <li v-for="content in contents" class="list-item">
+                                <el-row class="el-header">
+                                    <el-col :span="2" class="head">
+                                        <div class="grid-content bg-purple">
+                                            <el-avatar size="small" src="images/touxiang.png"></el-avatar>
+                                        </div>
+                                    </el-col>
+                                    <el-col :span="2" class="uName">
+                                        <div class="grid-content bg-purple-light">
+                                            {{content.userName}}
+                                        </div>
+                                    </el-col>
+                                    <el-col :span="12" class="comRate">
+                                        <div class="grid-content bg-purple">
+                                            <el-rate
+                                                    v-model="content.markScore"
+                                                    disabled
+                                                    show-score
+                                                    text-color="#ff9900">
+                                            </el-rate>
+                                        </div>
+                                    </el-col>
+                                </el-row>
+                                <el-row class="el-main">
+                                    <el-col :span="12" class="mainMark">
+                                        <div class="grid-content bg-purple">
+                                            {{ content.markContent }}
+                                        </div>
+                                    </el-col>
+                                    <el-col :span="12" class="markTime">
+                                        <div class="grid-content bg-purple-light">
+                                            {{ content.markTime }}
+                                        </div>
+                                    </el-col>
+                                </el-row>
+                            </li>
+                        </ul>
+                        <el-skeleton v-if="loading"/>
+                        <p v-if="noMore">没有更多了</p>
+                    </div>
+                </template>
+            </el-card>
+        </div>
+    </div>
+
+</div>
+
+</body>
+<script type="text/javascript" th:src="@{/js/vue.js}"></script>
+<script type="text/javascript" th:src="@{/js/axios.min.js}"></script>
+<!-- 引入样式 -->
+<link rel="stylesheet" th:href="@{/js/element-ui/lib/theme-chalk/index.css}">
+<!-- 引入组件库 -->
+<script th:src="@{/js/element-ui/lib/index.js}"></script>
+<!-- 引入样式 -->
+<!--<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">-->
+<!--&lt;!&ndash; 引入组件库 &ndash;&gt;-->
+<!--<script src="https://unpkg.com/element-ui/lib/index.js"></script>-->
+<!-- 引入 echarts.js -->
+<script th:src="@{/js/echarts.js}"></script>
+<script th:inline="javascript">
+    Vue.prototype.$echarts = echarts;
+    const vm = new Vue({
+        el: "#app",
+        data: {
+            userId: "",       //当前登录的用户
+            comId: "",          //当前浏览的商品
+            prices: [],      //价格列表
+            contents: [],     //评价列表
+            contentTemp: [],   //临时存储后端传来的
+            loading: false,
+            markScore: 0,       //评分
+            markContent: "", //评论内容
+            isInfo:false, // 是否显示提示信息
+            infoText:"", // 要显示的提示信息
+            page: 0,        //评论的页数
+        },
+        created() {
+            this.getContents();
+        },
+        mounted() {
+            this.showPrices();
+        },
+        computed: {
+            noMore() {
+                return this.contentTemp == "" && this.page != 1;
+            },
+            noContents() {
+                return this.contentTemp == '' && this.page == 1;
+            },
+            disabled() {
+                return this.loading || this.noMore || this.noContents;
+            }
+        },
+        methods: {
+            logout(){
+                this.$confirm('是否退出登录?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.$message({
+                        type: 'success',
+                        message: '退出成功!'
+                    });
+                    // 1200毫秒之后跳转页面
+                    setTimeout(function () {
+                        window.location.href = "logout";
+                    }, 1200);
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            //提交评论
+            submitContent:function (){
+                if(this.markContent === ""){
+                    this.infoText = "输入的内容不能为空！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function(){
+                        that.isInfo = false;
+                    }, 1200);
+                }else if(this.markContent.length > 200){
+                    this.infoText = "输入的字数不能超过100字！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function(){
+                        that.isInfo = false;
+                    }, 1200);
+                }
+                else if (this.markScore == 0){
+                    this.infoText = "评价分数不能为0！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function(){
+                        that.isInfo = false;
+                    }, 1200);
+                } else{
+                    var that = this;
+                    axios.post("saveContent?comId="+ this.comId +"&markContent="+this.markContent+"&markScore="+this.markScore).then(function (resp){
+                        if (resp.data){
+                            that.$message({
+                                type: 'success',
+                                message: '提交评价成功!'
+                            });
+                        }else {
+                            that.$message({
+                                type: 'info',
+                                message: '评价失败，您已经评论过该商品!'
+                            });
+                        }
+
+                    },function (error){})
+
+                    // 1200毫秒之后跳转页面
+                    setTimeout(function () {
+                        window.location.href = "toDetail?comId=" + that.comId;
+                    }, 1200);
+                }
+            },
+            //获得历史价格并以表格形式展现在页面中
+            showPrices: function () {
+                //从session中获得所有价格信息
+                this.prices = [[${prices}]];
+                //使用echarts，初始化echarts实例
+                let myChart = this.$echarts.init(document.getElementById('prices'));
+                var that = this;
+
+                // 绘制图表
+                myChart.setOption({
+                    title: {text: '商品价格趋势'},
+                    tooltip: {},
+                    dataset: {
+                        dimensions: ['priceTime', 'priceNow'],
+                        // 提供一份数据。
+                        source: that.prices
+                    },
+                    // 声明一个 X 轴，类目轴（category）。默认情况下，类目轴对应到 dataset 第一列。
+                    xAxis: {
+                        type: 'category'
+                    },
+                    // 声明一个 Y 轴，数值轴。
+                    yAxis: {},
+                    series: [{
+                        type: 'line',
+                        // step:'end'
+                    }]
+                })
+            },
+            //获得评价信息
+            getContents: function () {
+                var that = this;
+                this.page += 1;
+                this.comId = [[${commodity.comId}]];
+                axios.get("getContents?page=" + this.page + "&comId=" + this.comId).then(function (response) {
+                    that.contentTemp = response.data;
+                    if (that.contentTemp != "") {
+                        //循环push进入数组中
+                        for (let i = 0; i < response.data.length; i++) {
+                            that.contents.push(response.data[i]);
+                        }
+                    }
+                    //对象嵌套了数组，数组嵌套了对象，且是多层的，因此Vue无法检测到内部的更新或增删。
+                    // this.$forceUpdate();
+                }, function (error) {
+                });
+            },
+            load() {
+                this.loading = true
+                setTimeout(() => {
+                    this.getContents();
+                    this.loading = false;
+                }, 2000)
+            }
+        }
+    });
+</script>
+</html>

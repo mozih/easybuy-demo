@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mo.easybuy.mapper.BrowseMapper">
+
+    <select id="getBrowseHistory" parameterType="Integer" resultType="BrowseVo">
+        select browseId,b.comId,comDetail,comPicUrl,comAddress,browseTime from browse b
+        left join commodity c
+        on
+        b.comId = c.comId
+        where userId = #{userId} ORDER BY browseTime DESC
+    </select>
+
+</mapper>

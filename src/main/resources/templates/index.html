@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>轻松比首页</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="shortcut icon" href="images/logo.ico" type="image/x-icon">
+</head>
+<base th:href="@{/}" href="/"/>
+<body>
+<div id="app">
+    <div class="top" @click="hideHistory">
+        <li><a class="active" @click="toUser">个人主页</a></li>
+        <li><a class="active" @click="toHistory">浏览历史</a></li>
+        <li th:if="${session.user != null}">
+            欢迎您，<span th:text="${session.user.userName}"></span>
+            <a id="logout" @click="logout()">退出登录</a>
+        </li>
+        <li th:if="${session.user == null}"><a onclick="location='login'">请登录</a></li>
+        <div><img style="width: 45px;height: 45px;padding-left: 5px" src="images/logo.jpg" onclick="location='index'">
+        </div>
+        <!--        <div class="dropdown">-->
+        <!--            <a href="#" class="dropbtn">下拉菜单</a>-->
+        <!--            <div class="dropdown-content">-->
+        <!--                <a href="#">链接 1</a>-->
+        <!--                <a href="#">链接 2</a>-->
+        <!--                <a href="#">链接 3</a>-->
+        <!--            </div>-->
+        <!--        </div>-->
+    </div>
+
+    <!-- 提示信息 -->
+    <transition>
+        <p v-if="isInfo" class="info" v-cloak>{{ infoText }}</p>
+    </transition>
+
+    <div @click="hideHistory"><img class="mainlogo" src="images/mainlogo.png"></div>
+
+    <!-- 搜索框 -->
+    <section class="searchBox">
+        <div class="inputBox">
+            <input @click="showHistory" type="text" placeholder="请输入您要搜索的商品" id="searchInput" v-model="queryString"
+                   @keyup.enter="search">
+            <img src="images/search.png" alt="" @click="search">
+        </div>
+        <!--选择框-->
+        <div style="width: 380px;margin: 15px 0 0 0px;">
+            <el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange"
+                         style="margin: 0px 10px 0px 0px;float: left">全选
+            </el-checkbox>
+            <el-checkbox-group v-model="checkedShop" @change="handleCheckedShopsChange">
+                <el-checkbox v-for="shop in shops" :label="shop" :key="shop" style="margin-right: 16px">{{shop}}
+                </el-checkbox>
+            </el-checkbox-group>
+        </div>
+        <div class="searchhistory" id="searchhistory">
+            <h3 style="margin: 10px 0px 10px 20px">搜索历史</h3>
+            <span v-show="tags.length > 0" style="position: absolute;right: 30px;top: 10px;color: gray"><a @click="cleanAll">清空</a></span>
+            <el-tag style="margin: 10px 0 0 20px;float: left"
+                    v-for="tag in tags"
+                    @click="addSearch(tag.name)"
+                    :key="tag.name"
+                    closable
+                    :disable-transitions="false"
+                    @close="deleteSearch(tag)"
+                    :type="tag.type">
+                {{tag.name}}
+            </el-tag>
+        </div>
+    </section>
+
+    <div class="commoditylist" @click="hideHistory">
+        <el-empty v-if="isEmpty" description="暂无搜索结果，换个关键词试试吧！"></el-empty>
+        <ul v-loading="loading">
+            <li v-for="commodity in comTemp">
+                <div class="picture" @click="toDetail(commodity.comId)">
+                    <el-image :src="commodity.comPicUrl" style="width: 100%;height: 100%"></el-image>
+                </div>
+                <div class="title" @click="toDetail(commodity.comId)">
+                    <!--:href="commodity.comUrl" target="_blank"-->
+                    <span>{{commodity.comDetail}}</span>
+                </div>
+                <div class="commodityAdress">
+                    <img src="images/jd.png" v-if="commodity.comAddress == '京东商城（自营）'">
+                    <img src="images/amazon.png" v-if="commodity.comAddress == '亚马逊'">
+                    <img src="images/suning.png" v-if="commodity.comAddress == '苏宁易购'">
+                    <img src="images/dangdang.png" v-if="commodity.comAddress == '当当网'">
+                    {{commodity.comAddress}}
+                </div>
+                <div class="price">
+                    <span style="color: red">￥{{commodity.priceNow}}</span><br>
+                </div>
+                <div class="time">
+                    <span>更新时间：</span><br>
+                    <span>{{commodity.priceTime}}</span><br><br>
+                    <span>
+                        {{commodity.comScan}}人浏览
+                        &nbsp;&nbsp;&nbsp;&nbsp;
+                        {{commodity.comMarknumber}} 评论
+                    </span>
+                </div>
+                <hr>
+            </li>
+            <el-skeleton v-if="loadCom" :rows="5" animated/>
+            <hr>
+        </ul>
+    </div>
+</div>
+</body>
+<script type="text/javascript" th:src="@{/js/vue.js}"></script>
+<script type="text/javascript" th:src="@{/js/axios.min.js}"></script>
+<!-- 引入样式 -->
+<link rel="stylesheet" th:href="@{/js/element-ui/lib/theme-chalk/index.css}">
+<!-- 引入组件库 -->
+<script th:src="@{/js/element-ui/lib/index.js}"></script>
+<!-- 引入 echarts.js -->
+<script th:src="@{/js/echarts.js}"></script>
+<script th:inline="javascript">
+    const shopOptions = ['亚马逊', '京东', '苏宁易购', '当当'];
+    const vm = new Vue({
+        el: "#app",
+        data: {
+            userId: "",        //当前登录的用户
+            queryString: "", // 查询字符串
+            keyword: [],    //关键字查询历史
+
+            isInfo: false, // 是否显示提示信息
+            infoText: "", // 要显示的提示信息
+            loading: false,  //等待搜索完毕加载状态
+            comList: [],   //所有商品列表
+
+            comTemp: [],     //临时存放前几页的商品
+            page: 1,         //显示的商品页数，每页20个商品
+            loadCom: false,  //懒加载商品列表状态
+            isEmpty: false, //搜索结果是否为空
+
+            //处理按商城查询
+            checkAll: true,
+            checkedShop: shopOptions,
+            shops: shopOptions,
+            isIndeterminate: false,
+            //历史搜索
+            tags: [],
+        },
+        mounted() {
+            // console.log([[${session.user == null ? '':session.user.userId}]]);
+            this.userId = [[${session.user == null ? '':session.user.userId}]];
+            let _this = this;
+            window.onscroll = function () {
+                //变量scrollTop是滚动条滚动时，距离顶部的距离
+                var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                //变量windowHeight是可视区的高度
+                var windowHeight = document.documentElement.clientHeight || document.body.clientHeight;
+                //变量scrollHeight是滚动条的总高度
+                var scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+                //滚动条到底部的条件
+                if (scrollTop + windowHeight >= scrollHeight-1 && _this.comList.length != _this.comTemp.length) {
+                    //到了这个就可以进行业务逻辑加载后台数据了
+                    _this.loadCom = true
+                    // console.log("到了底部");
+                    setTimeout(() => {
+                        if (!(_this.comList.length <= _this.page * 20 && _this.page != 1)) {
+                            _this.page++;
+                            let comList = _this.comList.slice((_this.page - 1) * 20, _this.page * 20)
+                            for (let i = 0; i < comList.length; i++) {
+                                _this.comTemp.push(comList[i]);
+                            }
+                        } else if ((_this.page * 20 - _this.comList.length) > 0) {
+                            let comList = _this.comList.slice((_this.page - 1) * 20, _this.comList.length);
+                            for (let i = 0; i < comList.length; i++) {
+                                _this.comTemp.push(comList[i]);
+                            }
+                        }
+                        // console.log(_this.comTemp);
+                        _this.loadCom = false;
+                    }, 2000)
+                }
+            }
+        },
+        methods: {
+            logout() {
+                this.$confirm('是否退出登录?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.$message({
+                        type: 'success',
+                        message: '退出成功!'
+                    });
+                    // 1200毫秒之后跳转页面
+                    setTimeout(function () {
+                        window.location.href = "logout";
+                    }, 1200);
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            //显示搜索历史
+            showHistory: function () {
+                document.getElementById("searchhistory").style.display = "block";
+                var _this = this;
+                if ("" != this.userId && this.userId != null) {
+                    if (this.tags.length == 0) {
+                        //异步请求获取历史记录
+                        axios.get("getSearch?userId=" + this.userId).then(function (resp) {
+                            for (let i = 0; i < resp.data.length; i++) {
+                                var tagTemp = {name: resp.data[i].searchContent, type: 'info'};
+                                _this.tags.push(tagTemp);
+                            }
+                            // console.log(_this.tags);
+                        }, function (error) {
+                        })
+                    }
+                }
+
+            },
+            //隐藏搜索历史
+            hideHistory: function () {
+                document.getElementById("searchhistory").style.display = "none";
+                this.tags = [];//重置搜索历史
+            },
+            //处理选择搜索历史后进行搜索
+            addSearch: function (searchContent) {
+                this.queryString = searchContent;
+                this.search();
+            },
+            //删除搜索历史
+            deleteSearch:function (tag){
+                this.tags.splice(this.tags.indexOf(tag), 1);
+                if (tag != null){
+                    //异步请求删除
+                    axios.post("deleteSearch?userId="+this.userId+"&searchContent="+tag.name).then(function (resp){
+                        // console.log(resp.data);
+                    },function(error){})
+                }
+            },
+            //清空搜索历史
+            cleanAll:function (){
+                this.tags = [];
+                //清空搜索历史
+                axios.post("deleteSearch?userId="+this.userId).then(function (resp){
+                    console.log(resp.data);
+                },function (error){})
+            },
+            //处理按商城查询
+            handleCheckAllChange(val) {
+                this.checkedShop = val ? shopOptions : [];
+                this.isIndeterminate = false;
+            },
+            handleCheckedShopsChange(value) {
+                let checkedCount = value.length;
+                this.checkAll = checkedCount === this.shops.length;
+                this.isIndeterminate = checkedCount > 0 && checkedCount < this.shops.length;
+            },
+            // 按下enter键或点击搜索图标进行搜索
+            search: function () {
+                this.hideHistory();//关闭搜索历史框
+                this.tags = [];//重置搜索历史
+                this.isEmpty=false;
+                // console.log(this.userId);
+                if (this.userId == "") {
+                    this.infoText = "请先进行登录！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function () {
+                        that.isInfo = false;
+                    }, 1200);
+                } else if (this.queryString === "") {
+                    this.infoText = "输入的内容不能为空！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function () {
+                        that.isInfo = false;
+                    }, 1200);
+                } else {
+                    // 在当前窗口打开
+                    // window.location.href = "https://www.baidu.com/s?ie=UTF-8&wd=" + this.queryString;
+                    // 在新窗口打开
+                    // window.open("https://www.baidu.com/s?ie=UTF-8&wd=" + this.queryString);
+                    var that = this;
+                    this.loading = true;
+                    // 使用axios异步请求
+                    axios.get("getCommodity?keyword=" + this.queryString + "&checkedShop=" + this.checkedShop).then(function (response) {
+                        // console.log(response.data);
+                        that.comList = response.data;
+                        that.comTemp = that.comList.slice(0, 20);
+                        that.page = 1;//重置页数
+                        if(that.comList.length == 0){
+                            that.isEmpty=true;
+                        }
+                        that.loading = false;
+                    }, function (error) {});
+
+                }
+            },
+            //前往商品详情页面
+            toDetail: function (comId) {
+                //进行跳转
+                window.open("toDetail?comId=" + comId);
+            },
+            //前往浏览历史页面
+            toHistory: function () {
+                if (this.userId == "") {
+                    this.infoText = "请先进行登录！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function () {
+                        that.isInfo = false;
+                    }, 1200);
+                } else {
+                    //进行跳转
+                    window.location.href = "toHistory";
+                }
+            },
+            //前往个人主页
+            toUser: function () {
+                if (this.userId == "") {
+                    this.infoText = "请先进行登录！";
+                    this.isInfo = true;
+                    let that = this;
+                    // 1200毫秒之后关闭提示信息
+                    setTimeout(function () {
+                        that.isInfo = false;
+                    }, 1200);
+                } else {
+                    //进行跳转
+                    window.location.href = "toUser";
+                }
+            }
+        }
+    });
+</script>
+</html>

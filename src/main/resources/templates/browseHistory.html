@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>浏览历史</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="shortcut icon" href="images/logo.ico" type="image/x-icon">
+</head>
+<base th:href="@{/}" href="/"/>
+<body>
+<div id="app">
+    <div class="top">
+        <li><a class="active" onclick="location='toUser'">个人主页</a></li>
+        <li><a class="active" onclick="location='toHistory'">浏览历史</a></li>
+        <li th:if="${session.user != null}">
+            欢迎您，<span th:text="${session.user.userName}"></span>
+            <a id="logout"  @click="logout()">退出登录</a>
+        </li>
+        <li th:if="${session.user == null}"><a onclick="location='login'">请登录</a> </li>
+        <div><img style="width: 45px;height: 45px;padding-left: 5px" src="images/logo.jpg" onclick="location='index'"></div>
+    </div>
+
+    <div style="width: 100%;height: auto">
+        <div style="margin:30px 0 0 13%;width: 70%">
+            <i class="el-icon-time" style="font-size: 32px;"></i><span style="position: absolute"><h2>浏览记录</h2></span>
+            <hr>
+        </div>
+    </div>
+
+    <div class="block">
+        <div style="margin:30px 0 0 13%;width: 70%">
+            <el-timeline>
+                <el-empty description="暂无浏览信息" th:if="${browseMap.size() == 0}"></el-empty>
+                <el-timeline-item th:each="item,map : ${browseMap}" th:timestamp="${map.current.key}" placement="top">
+                    <el-card th:each="commodity : ${map.current.value}">
+                        <div th:onclick="'location=\'toDetail?comId='+${commodity.comId}+'\''">
+                            <div class="picture" style="width: 100px;height: 120px">
+                                <el-image th:src="${commodity.comPicUrl}" style="width: 100%;height: 100%"></el-image>
+                            </div>
+                            <div class="title" style="position: absolute;margin: -110px 0 0 140px;">
+                                <!--:href="commodity.comUrl" target="_blank"-->
+                                <span th:text="${commodity.comDetail}"></span>
+                            </div>
+                            <div class="commodityAdress" style="position: absolute;margin: -25px 0 0 150px;">
+                                <img src="images/jd.png" th:if="${commodity.comAddress.equals('京东商城（自营）')}">
+                                <img src="images/amazon.png" th:if="${commodity.comAddress.equals('亚马逊')}">
+                                <img src="images/suning.png" th:if="${commodity.comAddress.equals('苏宁易购')}">
+                                <img src="images/dangdang.png" th:if="${commodity.comAddress.equals('当当网')}">
+                                <span th:text="${commodity.comAddress}"></span>
+                            </div>
+                        </div>
+                    </el-card>
+                </el-timeline-item>
+            </el-timeline>
+        </div>
+    </div>
+</div>
+</body>
+<script type="text/javascript" th:src="@{/js/vue.js}"></script>
+<script type="text/javascript" th:src="@{/js/axios.min.js}"></script>
+<!-- 引入样式 -->
+<link rel="stylesheet" th:href="@{/js/element-ui/lib/theme-chalk/index.css}">
+<!-- 引入组件库 -->
+<script th:src="@{/js/element-ui/lib/index.js}"></script>
+<!-- 引入 echarts.js -->
+<script th:src="@{/js/echarts.js}"></script>
+<script th:inline="javascript">
+    const browseList = [[${browseMap}]];
+    const vm = new Vue({
+        el: "#app",
+        data: {
+            userId: "",        //当前登录的用户
+            browseMap: [],   //商品浏览历史列表
+
+        },
+        mounted() {
+            // this.browseSet = browseList;
+            // console.log(this.browseSet);
+        },
+        methods: {
+            logout(){
+                this.$confirm('是否退出登录?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.$message({
+                        type: 'success',
+                        message: '退出成功!'
+                    });
+                    // 1200毫秒之后跳转页面
+                    setTimeout(function () {
+                        window.location.href = "logout";
+                    }, 1200);
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+        }
+    });
+</script>
+</html>

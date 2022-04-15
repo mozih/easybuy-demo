@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8"/>
+<title>消息页面</title>
+<link href="css/common.css" rel="stylesheet" type="text/css" />
+<link href="css/style.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+<div class="wrap">
+  <div class="sale">
+    <h1 class="lf" th:text="${errorMsg}"></h1>
+<!--    <div class="logout right"><a href="/queryAllAuctions" title="注销">返回主页</a></div>-->
+    <input type="button" value="返回主页" class="spbg buttombg f14 right"
+           onclick="location='index'" />
+<!--    <a href="/queryAllAuctions" >返回主页</a>-->
+  </div>
+</div>
+</body>
+</html>

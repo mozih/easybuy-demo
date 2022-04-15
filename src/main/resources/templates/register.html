@@ -1,0 +1,138 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>注册页面</title>
+    <link href="css/common.css" rel="stylesheet" type="text/css"/>
+    <link href="css/style.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="js/jquery-1.8.3.js"></script>
+    <script type="text/javascript">
+        //验证，在提交表单时
+        function checkAll() {
+            var username = document.getElementById("username").value;
+            var userTips = document.getElementById("userTips").innerHTML;
+            //获取第一次输入的密码
+            var newPwd1 = document.getElementById("newPwd1").value;
+            //获取第二次输入的密码
+            var newPwd2 = document.getElementById("newPwd2").value;
+            //获取提示信息的span
+            var passwordspan = document.getElementById("newPwd2span");
+            //获取邮箱
+            var email = document.getElementById("email").value;
+            var emailTips = document.getElementById("emailTips");
+            //正确邮箱地址的正则表达式
+            var pattern = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/;
+            //进行判断是否相同
+            if (username == "") {
+                passwordspan.innerHTML = "";
+                emailTips.innerHTML = "";
+                return false;
+            } else if (userTips == "用户名已存在") {
+                passwordspan.innerHTML = "";
+                emailTips.innerHTML = "";
+                return false;
+            }
+            if (newPwd1 == "") {
+                passwordspan.innerHTML = "密码不能为空";
+                return false;
+            } else if (newPwd1 !== newPwd2) {
+                passwordspan.innerHTML = "两次输入不一致";
+                return false;
+            } else if (email == "") {
+                passwordspan.innerHTML = "";
+                emailTips.innerHTML = "邮箱不能为空";
+                return false;
+            } else if (!pattern.test(email)) {
+                emailTips.innerHTML = "邮箱格式不正确";
+                return false;
+            } else if (emailTips.innerHTML == "邮箱已被注册") {
+                return false;
+            } else {
+                emailTips.innerHTML = "";
+                return true;
+            }
+        }
+
+
+        $(function () {
+            //用户名是否存在验证
+            $("#username").blur(function () {
+                    // 获取用户名
+                    var usernameValue = this.value;
+                    //判断用户名不能为空
+                    if (usernameValue == "") {
+                        $("#userTips").html("用户名不能为空！");
+                        return;
+                    }
+                    // 发送 ajax 请求验证
+                    $.getJSON("/easybuy/getUserName?userName=" + usernameValue, function (data) {
+                        // result 等于 0，说明用户名不存在
+                        if (data == 0) {
+                            $("#userTips").html("");
+                        }
+                        // result 等于 1，说明用户名存在
+                        else if (data == 1) {
+                            $("#userTips").html("用户名已存在");
+                        }
+                    });
+                });
+                //邮箱是否存在验证
+                $("#email").blur(function () {
+                    var email = this.value;
+                    var pattern = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/;
+                    if (email =="" || !pattern.test(email)){
+                        return;
+                    }
+                    // 发送 ajax 请求验证
+                    $.getJSON("/easybuy/getEmail?email=" + email, function (data) {
+                        // result 等于 0，说明邮箱不存在
+                        if (data == 0) {
+                            $("#emailTips").html("");
+                        }
+                        // result 等于 1，说明邮箱存在
+                        else if (data == 1) {
+                            $("#emailTips").html("邮箱已被注册");
+                        }
+                    });
+                })
+        })
+    </script>
+</head>
+
+<body>
+<div class="wrap">
+    <form method="post" th:action="@{/registerUser}" onsubmit="return checkAll()">
+        <!-- main begin-->
+        <div class="zclf login logns">
+            <h1 class="blue">用户注册</h1>
+            <dl>
+                <dd>
+                    <label> <small>*</small>用户名</label>
+                    <input id="username" type="text" class="inputh lf" name="userName"/>
+                    <div style="color: red ;float: left" id="userTips"></div>
+                </dd>
+                <dd>
+                    <label> <small>*</small>密码</label>
+                    <input id="newPwd1" type="password" onblur="checkAll()" class="inputh lf" name="userPassword"/>
+                </dd>
+                <dd>
+                    <label><small>*</small>确认密码:</label>
+                    <input id="newPwd2" type="password" onblur="checkAll()" class="inputh lf"/>
+                    <div style="color: red ;float: left" id="newPwd2span"></div>
+                </dd>
+                <dd>
+                    <label><small>*</small>邮箱地址</label>
+                    <input id="email" type="text" class="inputh lf" name="email" onblur="checkAll()"/>
+                    <div style="color: red ;float: left" id="emailTips"></div>
+                </dd>
+                <dd class="hegas">
+                    <label>&nbsp;</label>
+                    <input onclick="location='login'" value="返回登录" class="spbg buttombg buttombgs f14 lf"/>
+                    <input name="" type="submit" value="立即注册" class="spbg buttombg buttombgs f14 lf"/>
+                </dd>
+            </dl>
+        </div>
+    </form>
+
+</div>
+</body>
+</html>

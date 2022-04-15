@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mo.easybuy.mapper.MarkMapper">
+    <select id="selctContentByUserId" parameterType="Integer" resultType="CommentVo">
+        select markId,u.userName,c.comId,markScore,markContent,markTime,c.comDetail,c.comPicUrl
+        from mark m
+                 left join user u on(m.userId = u.userId)
+                 left join commodity c on(m.comId = c.comId)
+        where m.userId = #{userId} ORDER BY markTime DESC
+    </select>
+
+</mapper>

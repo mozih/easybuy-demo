@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>个人主页</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="shortcut icon" href="images/logo.ico" type="image/x-icon">
+</head>
+<base th:href="@{/}" href="/"/>
+<body>
+<div id="app">
+    <div class="top">
+        <li><a class="active" onclick="location='toUser'">个人主页</a></li>
+        <li><a class="active" onclick="location='toHistory'">浏览历史</a></li>
+        <li th:if="${session.user != null}">
+            欢迎您，<span th:text="${session.user.userName}"></span>
+            <a id="logout" @click="logout()">退出登录</a>
+        </li>
+        <li th:if="${session.user == null}"><a onclick="location='login'">请登录</a></li>
+        <div><img style="width: 45px;height: 45px;padding-left: 5px" src="images/logo.jpg" onclick="location='index'">
+        </div>
+    </div>
+
+    <div class="userDetail">
+        <div class="menu">
+            <el-menu :default-active="'1'" class="el-menu-demo" mode="horizontal" @select="handleSelect">
+                <el-menu-item index="1">个人信息</el-menu-item>
+                <el-menu-item index="2">修改密码</el-menu-item>
+                <el-menu-item index="3">历史评论</el-menu-item>
+                <el-menu-item index="4">关于我们</el-menu-item>
+            </el-menu>
+        </div>
+        <div class="container">
+            <div id="detail" class="detail">
+                <div style="margin-bottom: 40px"><i class="el-icon-user-solid"></i>用户名称：&nbsp&nbsp&nbsp&nbsp<span
+                        style="color: #66b1ff" th:text="${session.user.userName}"></span></div>
+                <div><i class="el-icon-message"></i>注册邮箱：&nbsp&nbsp&nbsp&nbsp<span style="color: #66b1ff"
+                                                                                   th:text="${session.user.email}"></span>
+                </div>
+            </div>
+
+            <div id="changePas" class="changePas">
+                <div>
+                    原密码:
+                    <el-input type="password" @blur="checkAll" placeholder="密码" v-model="pwd"></el-input>
+                </div>
+                <div>
+                    新密码:
+                    <el-input type="password" @blur="checkAll" placeholder="新密码" v-model="newPwd1"/>
+                </div>
+                <div>
+                    确认密码:
+                    <el-input type="password" @blur="checkAll" class="inputh" placeholder="确认密码" v-model="newPwd2"/>
+                </div>
+                <el-button style="width: 200px" type="primary" round @click="submit">提交</el-button>
+                <div style="color: red;" id="errorSpan"></div>
+            </div>
+
+            <div id="historyCom" class="historyCom">
+                <el-card><el-empty style="width: 160px;margin-left: 43%;" description="暂无评价信息" th:if="${comments.size() == 0}"></el-empty></el-card>
+                <el-card v-for="(comment,index) in comments">
+                    <div @mouseover="mouseOver(index)"
+                         @mouseleave="mouseLeave">
+                        <div style="width: 88%;">
+                            <div style="margin-bottom: 20px;">
+                                <span>{{comment.markTime}}</span>
+                                <el-rate style="position: absolute;margin: -25px 0px 0px 55%;"
+                                         v-model="comment.markScore"
+                                         disabled
+                                         show-score
+                                         text-color="#ff9900">
+                                </el-rate>
+                            </div>
+                            <div style="margin-bottom: 30px">{{comment.markContent}}</div>
+                            <!--                            <div class="delete" v-show="true">-->
+                            <div class="delete" v-show="currentIndex == index">
+                                <el-button type="danger" @click="deleteMark(comment.markId)" icon="el-icon-delete" circle></el-button>
+                            </div>
+                            <div style="height: 80px;" @click="toDetail(comment.comId)">
+                                <el-image :src="comment.comPicUrl"
+                                          style="width: 70px;height: 80px;margin: 10px 0px 0 5px;"></el-image>
+                                <div style="position: relative;margin: -80px 0px 0px 100px;">{{comment.comDetail}}</div>
+                            </div>
+                        </div>
+                    </div>
+                </el-card>
+            </div>
+
+            <div id="historySearch" class="historySearch">
+
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+<script type="text/javascript" th:src="@{/js/vue.js}"></script>
+<script type="text/javascript" th:src="@{/js/axios.min.js}"></script>
+<!-- 引入样式 -->
+<link rel="stylesheet" th:href="@{/js/element-ui/lib/theme-chalk/index.css}">
+<!-- 引入组件库 -->
+<script th:src="@{/js/element-ui/lib/index.js}"></script>
+<!-- 引入 echarts.js -->
+<script th:src="@{/js/echarts.js}"></script>
+<script th:inline="javascript">
+    const vm = new Vue({
+        el: "#app",
+        data: {
+            userId: "",        //当前登录的用户
+            comments: [],   //评论列表
+
+            pwd: "",
+            newPwd1: "",
+            newPwd2: "",
+            currentIndex: -1,   //当前鼠标所处的li项
+
+        },
+        mounted() {
+            this.comments = [[${comments}]]
+        },
+        methods: {
+            logout(){
+                this.$confirm('是否退出登录?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.$message({
+                        type: 'success',
+                        message: '退出成功!'
+                    });
+                    // 1200毫秒之后跳转页面
+                    setTimeout(function () {
+                        window.location.href = "logout";
+                    }, 1200);
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            },
+            handleSelect(key) {
+                var first = document.getElementById("detail");
+                var second = document.getElementById("changePas");
+                var third = document.getElementById("historyCom");
+                var fourth = document.getElementById("historySearch");
+                first.style.display = "none";
+                second.style.display = "none";
+                third.style.display = "none";
+                fourth.style.display = "none";
+                if (key == 1) {
+                    first.style.display = "block";
+                } else if (key == 2) {
+                    second.style.display = "block";
+                } else if (key == 3) {
+                    third.style.display = "block";
+                } else if (key == 4) {
+                    fourth.style.display = "block";
+                }
+                // console.log(key + "jjjjjj" + keyPath);
+            },
+            checkAll: function () {
+                var errorSpan = document.getElementById("errorSpan");
+                if (this.pwd == "" || this.newPwd1 == "" || this.newPwd2 == "") {
+                    errorSpan.innerHTML = "密码不能为空";
+                    return false;
+                } else if (this.newPwd1 != this.newPwd2) {
+                    errorSpan.innerHTML = "两次密码输入不一致";
+                    return false;
+                } else {
+                    errorSpan.innerHTML = "";
+                    return true;
+                }
+            },
+            submit: function () {
+                if (this.checkAll()) {
+                    console.log(this.newPwd2)
+                    window.location.href = "updatePwd?password=" + this.newPwd2;
+                }
+            },
+            toDetail: function (comId) {
+                window.location.href = "toDetail?comId=" + comId;
+            },
+            mouseOver: function (index) {
+                this.currentIndex = index;
+            },
+            mouseLeave() {
+                this.currentIndex = -1;
+            },
+            deleteMark:function (markId) {
+                this.$confirm('您确定要删除该评论吗?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    axios.post("deleteMark?markId="+markId).then(function (resp){
+                    },function (error){})
+                    this.$message({
+                        type: 'success',
+                        message: '删除成功!'
+                    });
+                    // 1200毫秒之后跳转页面
+                    setTimeout(function () {
+                        window.location.href = "toUser";
+                    }, 1200);
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+            }
+        }
+    });
+</script>
+</html>

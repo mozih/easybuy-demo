@@ -1,0 +1,14 @@
+ajax({
+				url: "buy/GoodsSearchForC",
+				type: "POST",
+				data: dataobj,
+	//			contentType: "application/json",
+	//			async:false,
+				successx: function(data) {
+					console.log("商品搜索");
+					console.log(data);
+					goodsTpl(data.data.data.list||[],dataobj,laytpl,laypage,data.data.data.total);
+					if(isreload)brandlist = data.data.shops||[];
+					brandTpl(brandlist,laytpl,dataobj);
+					if(dataobj.activityid)addnav(data.data.activityname||"");
+				}
