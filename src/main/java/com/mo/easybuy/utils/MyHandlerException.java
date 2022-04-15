@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletResponse;
  * create 2022-03-04 17:03
  * Description
  */
-@Component
+//@Component
 public class MyHandlerException implements HandlerExceptionResolver {
     @Override
     public ModelAndView resolveException(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Object o, Exception e) {
