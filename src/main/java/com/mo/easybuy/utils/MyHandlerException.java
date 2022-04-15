@@ -21,6 +21,7 @@ public class MyHandlerException implements HandlerExceptionResolver {
         modelAndView.addObject("errorMsg","未知异常");
         modelAndView.setViewName("errorPage");
         System.out.println("捕获到异常");
+        System.out.println("前往错误页面！！！");
         return modelAndView;
     }
 }
