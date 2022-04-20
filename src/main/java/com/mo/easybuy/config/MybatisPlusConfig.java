@@ -39,4 +39,10 @@ public class MybatisPlusConfig {
 
         return sqlExplainInterceptor;
     }
+
+    //注入自定义的sql注入器
+    @Bean
+    public MysqlInjector mysqlInjector(){
+        return new MysqlInjector();
+    }
 }

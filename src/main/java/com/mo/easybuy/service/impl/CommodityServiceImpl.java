@@ -88,7 +88,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                     commodities.add(commodity);
 //                    commodityMapper.insert(commodity);
                 }else {
-                    //将商品信息存储到redis中
+                    //将数据库中已经存在的商品信息存储到redis中
                     this.redisTemplate.opsForValue().set("commodity:" + commodityVo.getComName(), comTemp);
                 }
                 //下面的else语句是前期插入时没有插入图片，补充上去的，现在不需要了
@@ -104,7 +104,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
             }
         }
         //将商品信息插入到数据库中
-
+        this.commodityMapper.insertBatchSomeColumn(commodities);
 
         /**
          * 这里使用redis的原因：
@@ -113,6 +113,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
          */
         //优化插入商品价格,使得价格不再一条一条插入
         ArrayList<Price> prices = new ArrayList<>(commodityVoList.size());
+
         //for循环出来后，prices数组中就存放近期没有更新的价格数据
         for (CommodityVo commodityVo : commodityVoList) {
             //首先通过商品名称查询redis缓存中是否存在该商品信息
@@ -130,7 +131,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 //在redis中查询价格信息，以商品名称和价格联合作为key，价格信息作为value
                 Price price = (Price) this.redisTemplate.opsForValue().get("price:" + commodityVo.getComName() + commodityVo.getPriceNow());
 
-                //如果价格信息为空则进入到数据库中进行插入，即使数据库中存在价格信息，但价格采集时间不同
+                //如果redis中没有价格信息则插入到数据库中，即使数据库中存在价格信息，但价格采集时间不同
                 if (null == price) {
                     //在commodityVoList中筛选出价格信息插入到数据库中
                     price = new Price();
@@ -147,9 +148,12 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 //redis缓存中存在价格则不插入
                 //else{}
             } else {
-                System.out.println("抱歉，商品列表中没有该商品，不能插入价格");
+                System.out.println("无该商品信息");
             }
         }
+        //将商品信息插入到数据库中
+        this.priceMapper.insertBatchSomeColumn(prices);
+
     }
 
     @Override

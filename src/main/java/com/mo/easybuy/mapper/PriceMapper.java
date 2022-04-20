@@ -11,6 +11,6 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  * @author mo
  * @since 2022-03-03
  */
-public interface PriceMapper extends BaseMapper<Price> {
+public interface PriceMapper extends MyBaseMapper<Price> {
 
 }
