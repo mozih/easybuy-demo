@@ -36,12 +36,12 @@ public class CheckTest {
 
     @Test
     public void testCrawlMethod(){
-        try {
-            this.commodityService.crawerCommodity("眼镜");
-
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            this.commodityService.crawerCommodity("眼镜");
+//
+//        } catch (ParseException e) {
+//            e.printStackTrace();
+//        }
     }
 
     @Test

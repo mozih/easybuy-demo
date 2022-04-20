@@ -54,7 +54,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
      * @param keyword
      */
     @Transactional(propagation = Propagation.REQUIRED,isolation = Isolation.READ_COMMITTED)
-    public void crawerCommodity(String keyword) throws ParseException {
+    void crawerCommodity(String keyword) throws ParseException {
         //1.首先使用爬虫类进行数据爬取
         List<CommodityVo> commodityVoList = Crawler.crawler(keyword);
 
@@ -151,7 +151,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 System.out.println("无该商品信息");
             }
         }
-        //将商品信息插入到数据库中
+        //将商品价格信息插入到数据库中
         this.priceMapper.insertBatchSomeColumn(prices);
 
     }
