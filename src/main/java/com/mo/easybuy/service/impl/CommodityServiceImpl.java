@@ -54,7 +54,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
      * @param keyword
      */
     @Transactional(propagation = Propagation.REQUIRED,isolation = Isolation.READ_COMMITTED)
-    void crawerCommodity(String keyword) throws ParseException {
+    public void crawerCommodity(String keyword) throws ParseException {
         //1.首先使用爬虫类进行数据爬取
         List<CommodityVo> commodityVoList = Crawler.crawler(keyword);
 

@@ -6,12 +6,17 @@ import com.mo.easybuy.mapper.PriceMapper;
 import com.mo.easybuy.pojo.Commodity;
 import com.mo.easybuy.pojo.Price;
 import com.mo.easybuy.pojo.vo.CommodityVo;
+import com.mo.easybuy.service.CommodityService;
+import com.mo.easybuy.service.impl.CommodityServiceImpl;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import javax.annotation.Resource;
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,6 +31,18 @@ public class CheckTest {
     private CommodityMapper commodityMapper;
     @Resource
     private PriceMapper priceMapper;
+    @Autowired
+    private CommodityServiceImpl commodityService;
+
+    @Test
+    public void testCrawlMethod(){
+        try {
+            this.commodityService.crawerCommodity("眼镜");
+
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Test
     public void selectTest(){
