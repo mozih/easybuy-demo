@@ -53,16 +53,13 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
      *
      * @param keyword
      */
-    @Transactional(propagation = Propagation.REQUIRED,isolation = Isolation.READ_COMMITTED)
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED)
     void crawerCommodity(String keyword) throws ParseException {
         //1.首先使用爬虫类进行数据爬取
         List<CommodityVo> commodityVoList = Crawler.crawler(keyword);
 
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        //存储要插入的商品信息，进行统一插入，优化系统性能
-        List<Commodity> commodities = new ArrayList<>(commodityVoList.size());
 
-        //for循环出来后commodities数组中就存好了数据库中没有的商品信息
         //存储商品信息，使用redis
         for (CommodityVo commodityVo : commodityVoList) {
             //第一层保护，如果redis中存在商品信息则不用进入到数据库中保存了
@@ -76,35 +73,24 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 commodity.setComName(commodityVo.getComName());
                 commodity.setComPicUrl(commodityVo.getComPicUrl());
 
-                //第二层保护，先查询数据库中是否有该商品信息，有就不插入，防止商品信息重复
-                //创建查询条件
-                QueryWrapper<Commodity> wrapper = new QueryWrapper<>();
-                //写入查询条件,查询数据库中是否有该商品
-                wrapper.eq("comName", commodity.getComName());
-                //查询数据库中是否有该商品
-                Commodity comTemp = commodityMapper.selectOne(wrapper);
-                //如果数据库中没有该商品信息，则插入到数据库中
-                if (null == comTemp) {
-                    commodities.add(commodity);
-//                    commodityMapper.insert(commodity);
-                }else {
-                    //将数据库中已经存在的商品信息存储到redis中
-                    this.redisTemplate.opsForValue().set("commodity:" + commodityVo.getComName(), comTemp);
+                //如果插入到数据库中为0,表示数据库存在该商品信息
+                if (commodityMapper.insert(commodity) == 0) {
+                    //存在商品信息
+                    System.out.println("已存在商品信息");
                 }
-                //下面的else语句是前期插入时没有插入图片，补充上去的，现在不需要了
-//                else {
-//                    //将图片插入
-//                    String comPicUrl = commodityMapper.selectOne(wrapper).getComPicUrl();
-//                    if (null == comPicUrl) {
-//                        UpdateWrapper<Commodity> commodityUpdateWrapper = new UpdateWrapper<>();
-//                        commodityUpdateWrapper.eq("comName", commodity.getComName()).set("comPicUrl", commodity.getComPicUrl());
-//                        commodityMapper.update(null, commodityUpdateWrapper);
-//                    }
-//                }
+                QueryWrapper<Commodity> commodityQueryWrapper = new QueryWrapper<>();
+                commodityQueryWrapper.eq("comName", commodity.getComName());
+                Commodity comTemp = this.commodityMapper.selectOne(commodityQueryWrapper);
+                //将图片插入
+                if (null == comTemp.getComPicUrl()) {
+                    UpdateWrapper<Commodity> commodityUpdateWrapper = new UpdateWrapper<>();
+                    commodityUpdateWrapper.eq("comId", comTemp.getComId()).set("comPicUrl", commodity.getComPicUrl());
+                    commodityMapper.update(null, commodityUpdateWrapper);
+                }
+                //将数据库中已经存在的商品信息存储到redis中
+                this.redisTemplate.opsForValue().set("commodity:" + commodityVo.getComName(), comTemp);
             }
         }
-        //将商品信息插入到数据库中
-        this.commodityMapper.insertBatchSomeColumn(commodities);
 
         /**
          * 这里使用redis的原因：
@@ -125,6 +111,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 //写入查询条件,查询数据库中是否有该商品
                 commodityWrapper.eq("comName", commodityVo.getComName());
                 commodity = commodityMapper.selectOne(commodityWrapper);
+                System.out.println("这里面一般进不来,因为插入商品信息的时候已经将商品信息存入到redis中了");
             }
             //数据库或缓存中存在该商品，则进入if中，否则不插入价格信息
             if (null != commodity) {
@@ -186,7 +173,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         ArrayList<CommodityVo> commodityVos = new ArrayList<>(commodityList.size());
         //先将商品信息存入数组中
         //筛选出用户勾选的商城的商品
-        if (shops == null){
+        if (shops == null) {
             return commodityVos;
         }
         if (shops.length == 4) {
@@ -203,10 +190,10 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
                 commodityVo.setComScan(commodity.getComScan());
                 commodityVos.add(commodityVo);
             }
-        }else {
+        } else {
             for (String s : shops) {
                 for (Commodity commodity : commodityList) {
-                    if (commodity.getComAddress().indexOf(s) >= 0){
+                    if (commodity.getComAddress().indexOf(s) >= 0) {
                         CommodityVo commodityVo = new CommodityVo();
 //            System.out.println(commodity);
                         commodityVo.setComId(commodity.getComId());
@@ -226,7 +213,7 @@ public class CommodityServiceImpl extends ServiceImpl<CommodityMapper, Commodity
         //查询价格表
         for (int i = 0; i < commodityVos.size(); i++) {
             //查询redis中是否存在价格信息，以商品id作为key
-            List<Price> priceList = (List<Price>)this.redisTemplate.opsForValue().get("prices:" + commodityVos.get(i).getComId());
+            List<Price> priceList = (List<Price>) this.redisTemplate.opsForValue().get("prices:" + commodityVos.get(i).getComId());
             //为空则从数据库中查询
             if (null == priceList) {
                 QueryWrapper<Price> priceQueryWrapper = new QueryWrapper<>();
